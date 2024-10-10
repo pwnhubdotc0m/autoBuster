@@ -80,11 +80,14 @@ def choose_technology(tech_wordlists, no_wordlist_techs):
             techs = list(tech_wordlists.keys())
             for i, tech in enumerate(techs, 1):
                 print(f"{i}. {tech}")
-            choice = input(f"\nEnter your choice (1-{len(techs)}): ")
+            print(f"{len(techs) + 1}. Back")  # Add "Back" option
+            choice = input(f"\nEnter your choice (1-{len(techs) + 1}): ")
             try:
                 choice = int(choice)
                 if 1 <= choice <= len(techs):
                     return techs[choice - 1]
+                elif choice == len(techs) + 1:
+                    return "back"  # Return "back" if the user chooses to go back
                 else:
                     print("Invalid choice, please try again.")
             except ValueError:
@@ -106,7 +109,8 @@ def choose_wordlist(available_wordlists, wordlist_dir):
         print("\nSelect a wordlist to use for brute forcing:")
         for i, wordlist in enumerate(available_wordlists, 1):
             print(f"{i}. {wordlist}")
-        choice = input(f"\nEnter your choice (1-{len(available_wordlists)}): ")
+        print(f"{len(available_wordlists) + 1}. Back")  # Add "Back" option
+        choice = input(f"\nEnter your choice (1-{len(available_wordlists) + 1}): ")
         try:
             choice = int(choice)
             if 1 <= choice <= len(available_wordlists):
@@ -118,6 +122,8 @@ def choose_wordlist(available_wordlists, wordlist_dir):
                 else:
                     print(f"Wordlist '{selected_wordlist}' not found in directory '{wordlist_dir}'")
                     continue
+            elif choice == len(available_wordlists) + 1:
+                return "back"  # Return "back" if the user chooses to go back
             else:
                 print("Invalid choice, please try again.")
         except ValueError:
@@ -244,8 +250,14 @@ def main():
             tech_wordlists, no_wordlist_techs = suggest_wordlists(technologies, wordlist_dir)
             chosen_tech = choose_technology(tech_wordlists, no_wordlist_techs)
 
+            if chosen_tech == "back":
+                continue  # Go back to re-analyze or redo the process
+
             available_wordlists = tech_wordlists.get(chosen_tech, [])
             wordlist_choice = choose_wordlist(available_wordlists, wordlist_dir)
+
+            if wordlist_choice == "back":
+                continue  # Go back to the technology selection
             
             print(f"\nStarting directory brute-forcing on {args.url} using {wordlist_choice}...\n")
             start_brute_force(args.url, wordlist_choice)
