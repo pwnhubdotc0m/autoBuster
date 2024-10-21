@@ -8,6 +8,8 @@ import sys
 import signal
 from queue import Queue
 
+#21/10
+
 # Global flag for handling graceful exit
 stop_bruteforce = False
 
