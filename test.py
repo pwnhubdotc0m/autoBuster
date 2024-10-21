@@ -7,8 +7,10 @@ import requests
 import sys
 import signal
 from queue import Queue
+from colorama import Fore, Style, init
 
-#21/10
+# Initialize colorama for cross-platform support
+init(autoreset=True)
 
 # Global flag for handling graceful exit
 stop_bruteforce = False
@@ -16,35 +18,26 @@ stop_bruteforce = False
 # Initialize found_dirs as an empty list
 found_dirs = []
 
-# Signal handler to handle Ctrl+C for graceful exit
-def signal_handler(sig, frame):
-    global stop_bruteforce
-    print("\n[!] Stopping brute-force operation... Please wait.")
-    stop_bruteforce = True
-
-# Register the signal handler
-signal.signal(signal.SIGINT, signal_handler)
-
 def print_tool_name():
     """Prints the tool's name in ASCII art."""
     ascii_banner = pyfiglet.figlet_format("AutoBuster")
-    print(ascii_banner)
+    print(Fore.CYAN + Style.BRIGHT + ascii_banner)
 
 def analyze_website(url):
     """Analyzes the given URL for technologies using builtwith."""
-    print(f"\nAnalyzing {url} for web technologies...\n")
+    print(Fore.YELLOW + f"\nAnalyzing {url} for web technologies...\n")
     try:
         technologies = builtwith.parse(url)
         if not technologies:
-            print("No technologies detected.")
+            print(Fore.RED + "No technologies detected.")
             return None
         else:
-            print("Detected technologies:")
+            print(Fore.GREEN + "Detected technologies:")
             for category, techs in technologies.items():
-                print(f"- {category}: {techs}")
+                print(f"{Fore.GREEN}- {category}: {', '.join(techs)}")
             return technologies
     except Exception as e:
-        print(f"Error analyzing the website: {e}")
+        print(Fore.RED + f"Error analyzing the website: {e}")
         return None
 
 def find_wordlist(tech_name, wordlist_dir):
@@ -72,30 +65,31 @@ def suggest_wordlists(technologies, wordlist_dir):
 def choose_technology(tech_wordlists, no_wordlist_techs):
     """Prompts the user to choose a technology for which to use the wordlist."""
     if no_wordlist_techs:
-        print("\nThe following technologies do not have relevant wordlists and will not be displayed:")
+        print(Fore.YELLOW + "\nThe following technologies do not have relevant wordlists and will not be displayed:")
         for tech in no_wordlist_techs:
-            print(f"- {tech}")
+            print(f"{Fore.YELLOW}- {tech}")
     
     if tech_wordlists:
         while True:
-            print("\nSelect from the options:")
+            print(Fore.CYAN + "\nSelect from the options:")
             techs = list(tech_wordlists.keys())
             for i, tech in enumerate(techs, 1):
                 print(f"{i}. {tech}")
-            print(f"{len(techs) + 1}. Back")  # Add "Back" option
-            choice = input(f"\nEnter your choice (1-{len(techs) + 1}): ")
+            print(f"{len(techs) + 1}. Specify your own wordlists")
+
+            choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): ")
             try:
                 choice = int(choice)
                 if 1 <= choice <= len(techs):
                     return techs[choice - 1]
                 elif choice == len(techs) + 1:
-                    return "back"  # Return "back" if the user chooses to go back
+                    return input("Specify your own wordlists: ")
                 else:
-                    print("Invalid choice, please try again.")
+                    print(Fore.RED + "Invalid choice, please try again.")
             except ValueError:
-                print("Please enter a valid number.")
+                print(Fore.RED + "Please enter a valid number.")
     else:
-        print("\nNo technologies with available wordlists. Please specify your own.")
+        print(Fore.RED + "\nNo technologies with available wordlists. Please specify your own.")
         return input("Specify your own wordlists: ")
 
 def choose_wordlist(available_wordlists, wordlist_dir):
@@ -108,11 +102,12 @@ def choose_wordlist(available_wordlists, wordlist_dir):
         return None
 
     while True:
-        print("\nSelect a wordlist to use for brute forcing:")
+        print(Fore.CYAN + "\nSelect a wordlist to use for brute forcing:")
         for i, wordlist in enumerate(available_wordlists, 1):
             print(f"{i}. {wordlist}")
-        print(f"{len(available_wordlists) + 1}. Back")  # Add "Back" option
-        choice = input(f"\nEnter your choice (1-{len(available_wordlists) + 1}): ")
+        print(f"{len(available_wordlists) + 1}. Back")
+        
+        choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(available_wordlists) + 1}): ")
         try:
             choice = int(choice)
             if 1 <= choice <= len(available_wordlists):
@@ -122,46 +117,55 @@ def choose_wordlist(available_wordlists, wordlist_dir):
                 if full_wordlist_path:
                     return full_wordlist_path
                 else:
-                    print(f"Wordlist '{selected_wordlist}' not found in directory '{wordlist_dir}'")
+                    print(Fore.RED + f"Wordlist '{selected_wordlist}' not found in directory '{wordlist_dir}'")
                     continue
             elif choice == len(available_wordlists) + 1:
-                return "back"  # Return "back" if the user chooses to go back
+                return "back"
             else:
-                print("Invalid choice, please try again.")
+                print(Fore.RED + "Invalid choice, please try again.")
         except ValueError:
-            print("Please enter a valid number.")
+            print(Fore.RED + "Please enter a valid number.")
+
+# Signal handler to handle Ctrl+C for graceful exit
+def signal_handler(sig, frame):
+    global stop_bruteforce
+    print(Fore.YELLOW + "\n[!] Stopping brute-force operation... Please wait.")
+    stop_bruteforce = True
+
+# Register the signal handler
+signal.signal(signal.SIGINT, signal_handler)
 
 def start_brute_force(url, wordlist):
     """Starts the brute force operation by asking user for settings like recursion, timeout, user-agent, and thread count."""
     
-    recursive_input = input("Do you want to enable recursive search? (y/n): ").lower()
+    recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n): ").lower()
     recursive = True if recursive_input == 'y' else False
 
     if recursive:
-        recursion_depth = input("Enter recursion depth (default is 2): ")
+        recursion_depth = input(Fore.CYAN + "Enter recursion depth (default is 2): ")
         recursion_depth = int(recursion_depth) if recursion_depth else 2
     else:
         recursion_depth = 0
     
-    thread_count = input("Enter the number of threads to use (default is 50): ")
+    thread_count = input(Fore.CYAN + "Enter the number of threads to use (default is 50): ")
     thread_count = int(thread_count) if thread_count else 50
 
-    status_codes_input = input("Enter status codes to track (comma separated, e.g., 200,301,302) (default is 200): ")
+    status_codes_input = input(Fore.CYAN + "Enter status codes to track (comma separated, e.g., 200,301,302) (default is 200): ")
     if status_codes_input:
         status_codes = [int(code.strip()) for code in status_codes_input.split(',')]
     else:
         status_codes = [200]
 
-    timeout_input = input("Enter timeout in seconds (default is 5): ")
+    timeout_input = input(Fore.CYAN + "Enter timeout in seconds (default is 5): ")
     timeout = int(timeout_input) if timeout_input else 5
 
-    user_agent = input("Enter custom user-agent (default is 'AutoBuster/1.0'): ") or 'AutoBuster/1.0'
+    user_agent = input(Fore.CYAN + "Enter custom user-agent (default is 'AutoBuster/1.0'): ") or 'AutoBuster/1.0'
 
-    http_method = input("Enter HTTP method to use (default is GET): ").upper() or 'GET'
+    http_method = input(Fore.CYAN + "Enter HTTP method to use (default is GET): ").upper() or 'GET'
 
-    extensions = input("Enter file extensions to try (comma separated, e.g., .php,.html) or leave empty: ").split(',')
+    extensions = input(Fore.CYAN + "Enter file extensions to try (comma separated, e.g., .php,.html) or leave empty: ").split(',')
 
-    print(f"\nStarting brute-force with the following settings:\n"
+    print(Fore.YELLOW + f"\nStarting brute-force with the following settings:\n"
           f"- Recursive: {'Enabled' if recursive else 'Disabled'} (Depth: {recursion_depth})\n"
           f"- Thread count: {thread_count}\n"
           f"- Status codes: {status_codes}\n"
@@ -189,14 +193,14 @@ def brute_force_directory(url, wordlist, recursive=False, threads=50, status_cod
             try:
                 for ext in ([''] + extensions):
                     full_path = f"{url.rstrip('/')}/{directory}{ext}"
-                    sys.stdout.write(f"\r[*] Testing: {full_path}         ")
+                    sys.stdout.write(f"\r{Fore.CYAN}[*] Testing: {full_path}         ")
                     sys.stdout.flush()
 
                     headers = {'User-Agent': user_agent}
                     response = requests.request(http_method, full_path, timeout=timeout, headers=headers)
 
                     if response.status_code in status_codes:
-                        print(f"\n[+] Found: {full_path} (Status: {response.status_code})")
+                        print(Fore.GREEN + f"\n[+] Found: {full_path} (Status: {response.status_code})")
                         found_dirs.append(full_path)
 
                         if recursive and recursion_depth > 1:
@@ -227,12 +231,12 @@ def brute_force_directory(url, wordlist, recursive=False, threads=50, status_cod
             thread.join()
 
     except KeyboardInterrupt:
-        print("\n[!] Process interrupted by user. Exiting...")
+        print(Fore.RED + "\n[!] Process interrupted by user. Exiting...")
         sys.exit(0)
 
-    print("\n[+] Brute force complete. Found directories:")
+    print(Fore.GREEN + "\n[+] Brute force complete. Found directories:")
     for directory in found_dirs:
-        print(directory)
+        print(Fore.GREEN + directory)
 
 def main():
     print_tool_name()
@@ -243,7 +247,7 @@ def main():
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     wordlist_dir = os.path.join(current_dir, 'wordlists', 'Web-Content')
-    print(f"\nWordlist directory being used: {wordlist_dir}")
+    print(Fore.CYAN + f"\nWordlist directory being used: {wordlist_dir}")
 
     technologies = analyze_website(args.url)
 
@@ -253,15 +257,15 @@ def main():
             chosen_tech = choose_technology(tech_wordlists, no_wordlist_techs)
 
             if chosen_tech == "back":
-                continue  # Go back to re-analyze or redo the process
+                continue
 
             available_wordlists = tech_wordlists.get(chosen_tech, [])
             wordlist_choice = choose_wordlist(available_wordlists, wordlist_dir)
 
             if wordlist_choice == "back":
-                continue  # Go back to the technology selection
+                continue
             
-            print(f"\nStarting directory brute-forcing on {args.url} using {wordlist_choice}...\n")
+            print(Fore.CYAN + f"\nStarting directory brute-forcing on {args.url} using {wordlist_choice}...\n")
             start_brute_force(args.url, wordlist_choice)
             break
 
