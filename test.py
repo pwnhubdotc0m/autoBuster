@@ -6,6 +6,7 @@ import threading
 import requests
 import sys
 import signal
+import time
 from queue import Queue
 from colorama import Fore, Style, init
 
@@ -40,15 +41,6 @@ def analyze_website(url):
         print(Fore.RED + f"Error analyzing the website: {e}")
         return None
 
-def find_wordlist(tech_name, wordlist_dir):
-    """Search for a wordlist that contains the technology name, recursively."""
-    found_wordlists = []
-    for root, dirs, files in os.walk(wordlist_dir):
-        for file in files:
-            if tech_name.lower() in file.lower():
-                found_wordlists.append(file)
-    return found_wordlists
-
 def suggest_wordlists(technologies, wordlist_dir):
     """Suggest wordlists based on detected technologies from SecLists."""
     tech_wordlists = {}
@@ -62,63 +54,67 @@ def suggest_wordlists(technologies, wordlist_dir):
                 no_wordlist_techs.append(tech)
     return tech_wordlists, no_wordlist_techs
 
-def choose_technology(tech_wordlists, no_wordlist_techs):
-    """Prompts the user to choose a technology for which to use the wordlist."""
+def find_wordlist(tech_name, wordlist_dir):
+    """Search for a wordlist that contains the technology name, recursively."""
+    found_wordlists = []
+    for root, dirs, files in os.walk(wordlist_dir):
+        for file in files:
+            if tech_name.lower() in file.lower():
+                found_wordlists.append(file)
+    return found_wordlists
+
+def choose_technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
+    """Prompts the user to choose a technology or directly specify a custom wordlist."""
     if no_wordlist_techs:
         print(Fore.YELLOW + "\nThe following technologies do not have relevant wordlists and will not be displayed:")
         for tech in no_wordlist_techs:
             print(f"{Fore.YELLOW}- {tech}")
     
-    if tech_wordlists:
-        while True:
-            print(Fore.CYAN + "\nSelect from the options:")
-            techs = list(tech_wordlists.keys())
-            for i, tech in enumerate(techs, 1):
-                print(f"{i}. {tech}")
-            print(f"{len(techs) + 1}. Specify your own wordlists")
+    while True:
+        print(Fore.CYAN + "\nSelect from the options:")
+        techs = list(tech_wordlists.keys())
+        for i, tech in enumerate(techs, 1):
+            print(f"{i}. {tech}")
+        print(f"{len(techs) + 1}. Specify your own wordlist")
 
-            choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): ")
-            try:
-                choice = int(choice)
-                if 1 <= choice <= len(techs):
-                    return techs[choice - 1]
-                elif choice == len(techs) + 1:
-                    return input("Specify your own wordlists: ")
+        choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): ")
+        try:
+            choice = int(choice)
+            if 1 <= choice <= len(techs):
+                selected_tech = techs[choice - 1]
+                wordlists = [
+                    os.path.join(wordlist_dir, wordlist)  # Build the full path dynamically
+                    for wordlist in tech_wordlists[selected_tech]
+                ]
+                return wordlists  # Return the full paths of the wordlists
+            elif choice == len(techs) + 1:
+                custom_path = input(Fore.CYAN + "Enter the full path to your wordlist: ")
+                if os.path.isfile(custom_path):
+                    return [custom_path]  # Return custom wordlist as a single-item list
                 else:
-                    print(Fore.RED + "Invalid choice, please try again.")
-            except ValueError:
-                print(Fore.RED + "Please enter a valid number.")
-    else:
-        print(Fore.RED + "\nNo technologies with available wordlists. Please specify your own.")
-        return input("Specify your own wordlists: ")
+                    print(Fore.RED + f"The file '{custom_path}' does not exist. Please try again.")
+            else:
+                print(Fore.RED + "Invalid choice, please try again.")
+        except ValueError:
+            print(Fore.RED + "Please enter a valid number.")
 
-def choose_wordlist(available_wordlists, wordlist_dir):
-    """Prompts the user to choose a wordlist or go back. Search recursively in the wordlist directory."""
-    def find_wordlist_file(wordlist_name, base_dir):
-        """Recursively search for the wordlist file in the given directory."""
-        for root, dirs, files in os.walk(base_dir):
-            if wordlist_name in files:
-                return os.path.join(root, wordlist_name)
-        return None
+def choose_wordlist(available_wordlists):
+    """Prompts the user to choose a wordlist from the available options."""
+    if len(available_wordlists) == 1:
+        return available_wordlists[0]  # If there's only one wordlist, select it automatically
 
     while True:
         print(Fore.CYAN + "\nSelect a wordlist to use for brute forcing:")
         for i, wordlist in enumerate(available_wordlists, 1):
-            print(f"{i}. {wordlist}")
+            # Display only the filename for each wordlist
+            print(f"{i}. {os.path.basename(wordlist)}")
         print(f"{len(available_wordlists) + 1}. Back")
         
         choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(available_wordlists) + 1}): ")
         try:
             choice = int(choice)
             if 1 <= choice <= len(available_wordlists):
-                selected_wordlist = available_wordlists[choice - 1]
-                full_wordlist_path = find_wordlist_file(selected_wordlist, wordlist_dir)
-                
-                if full_wordlist_path:
-                    return full_wordlist_path
-                else:
-                    print(Fore.RED + f"Wordlist '{selected_wordlist}' not found in directory '{wordlist_dir}'")
-                    continue
+                return available_wordlists[choice - 1]  # Return the full path of the selected wordlist
             elif choice == len(available_wordlists) + 1:
                 return "back"
             else:
@@ -126,18 +122,8 @@ def choose_wordlist(available_wordlists, wordlist_dir):
         except ValueError:
             print(Fore.RED + "Please enter a valid number.")
 
-# Signal handler to handle Ctrl+C for graceful exit
-def signal_handler(sig, frame):
-    global stop_bruteforce
-    print(Fore.YELLOW + "\n[!] Stopping brute-force operation... Please wait.")
-    stop_bruteforce = True
-
-# Register the signal handler
-signal.signal(signal.SIGINT, signal_handler)
-
 def start_brute_force(url, wordlist):
     """Starts the brute force operation by asking user for settings like recursion, timeout, user-agent, and thread count."""
-    
     recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n): ").lower()
     recursive = True if recursive_input == 'y' else False
 
@@ -176,14 +162,18 @@ def start_brute_force(url, wordlist):
           f"- Wordlist: {wordlist}\n"
           f"- Target URL: {url}\n")
 
+    start_time = time.time()
     brute_force_directory(url, wordlist, recursive=recursive, threads=thread_count, status_codes=status_codes,
                           timeout=timeout, user_agent=user_agent, http_method=http_method, extensions=extensions,
                           recursion_depth=recursion_depth)
+    end_time = time.time()
+
+    elapsed_time = end_time - start_time
+    print(Fore.YELLOW + f"\n[+] Scan completed in {elapsed_time:.2f} seconds.")
 
 def brute_force_directory(url, wordlist, recursive=False, threads=50, status_codes=[200], timeout=5,
                           user_agent='AutoBuster/1.0', http_method='GET', extensions=[], recursion_depth=2):
     """Brute force directories on the given URL using the provided wordlist."""
-    
     global stop_bruteforce
 
     def worker():
@@ -205,8 +195,8 @@ def brute_force_directory(url, wordlist, recursive=False, threads=50, status_cod
 
                         if recursive and recursion_depth > 1:
                             brute_force_directory(full_path, wordlist, recursive=recursive, threads=threads,
-                                                status_codes=status_codes, timeout=timeout, user_agent=user_agent,
-                                                http_method=http_method, extensions=extensions, recursion_depth=recursion_depth - 1)
+                                                  status_codes=status_codes, timeout=timeout, user_agent=user_agent,
+                                                  http_method=http_method, extensions=extensions, recursion_depth=recursion_depth - 1)
                         break
             except requests.RequestException:
                 pass
@@ -221,18 +211,13 @@ def brute_force_directory(url, wordlist, recursive=False, threads=50, status_cod
         word_queue.put(directory)
 
     thread_list = []
-    try:
-        for _ in range(threads):
-            thread = threading.Thread(target=worker)
-            thread_list.append(thread)
-            thread.start()
+    for _ in range(threads):
+        thread = threading.Thread(target=worker)
+        thread_list.append(thread)
+        thread.start()
 
-        for thread in thread_list:
-            thread.join()
-
-    except KeyboardInterrupt:
-        print(Fore.RED + "\n[!] Process interrupted by user. Exiting...")
-        sys.exit(0)
+    for thread in thread_list:
+        thread.join()
 
     print(Fore.GREEN + "\n[+] Brute force complete. Found directories:")
     for directory in found_dirs:
@@ -254,13 +239,12 @@ def main():
     if technologies:
         while True:
             tech_wordlists, no_wordlist_techs = suggest_wordlists(technologies, wordlist_dir)
-            chosen_tech = choose_technology(tech_wordlists, no_wordlist_techs)
+            chosen_tech = choose_technology(tech_wordlists, no_wordlist_techs, wordlist_dir)  # Pass wordlist_dir
 
-            if chosen_tech == "back":
-                continue
-
-            available_wordlists = tech_wordlists.get(chosen_tech, [])
-            wordlist_choice = choose_wordlist(available_wordlists, wordlist_dir)
+            if isinstance(chosen_tech, list):  # Handle multiple wordlists
+                wordlist_choice = choose_wordlist(chosen_tech)
+            else:
+                wordlist_choice = chosen_tech[0]
 
             if wordlist_choice == "back":
                 continue
