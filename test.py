@@ -1,3 +1,4 @@
+#Initialize necessarry python library
 import builtwith
 import pyfiglet
 import argparse
@@ -7,70 +8,79 @@ import requests
 import sys
 import signal
 import time
+import json
+import csv
 from queue import Queue
 from colorama import Fore, Style, init
+
+#5/1 With comment and maybe all done not yet testing
 
 # Initialize colorama for cross-platform support
 init(autoreset=True)
 
-# Global flag for handling graceful exit
+# Global var for ctrl + C exit
 stop_bruteforce = False
 
-# Initialize found_dirs as an empty list
+# Create empty list for storing found directory
 found_dirs = []
 
+#Prints AutoBuster name in ASCII art.
 def print_tool_name():
-    """Prints the tool's name in ASCII art."""
     ascii_banner = pyfiglet.figlet_format("AutoBuster")
-    print(Fore.CYAN + Style.BRIGHT + ascii_banner)
+    print(Fore.CYAN + Style.BRIGHT + ascii_banner) 
 
-def analyze_website(url):
-    """Analyzes the given URL for technologies using builtwith."""
+
+def analyze_Website(url):
     print(Fore.YELLOW + f"\nAnalyzing {url} for web technologies...\n")
     try:
-        technologies = builtwith.parse(url)
+        technologies = builtwith.parse(url) #Parse URL for analyze with builtwith API
         if not technologies:
             print(Fore.RED + "No technologies detected.")
             return None
         else:
+            #loop to check for technology match
             print(Fore.GREEN + "Detected technologies:")
-            for category, techs in technologies.items():
+            for category, techs in technologies.items(): 
+                #display item in categories
                 print(f"{Fore.GREEN}- {category}: {', '.join(techs)}")
             return technologies
     except Exception as e:
         print(Fore.RED + f"Error analyzing the website: {e}")
         return None
 
-def suggest_wordlists(technologies, wordlist_dir):
-    """Suggest wordlists based on detected technologies from SecLists."""
+def suggest_Wordlist(technologies, wordlist_dir):
+    #create a list to store matched and unmatched technologies
     tech_wordlists = {}
-    no_wordlist_techs = []
+    nomatch_wordlist_techs = []
     for category, techs in technologies.items():
+        #code to detect if there's wordlists matching detected technology and categorize it
         for tech in techs:
-            wordlists = find_wordlist(tech, wordlist_dir)
+            wordlists = find_Wordlist(tech, wordlist_dir)
             if wordlists:
                 tech_wordlists[tech] = wordlists
             else:
-                no_wordlist_techs.append(tech)
-    return tech_wordlists, no_wordlist_techs
+                nomatch_wordlist_techs.append(tech)
+    return tech_wordlists, nomatch_wordlist_techs
 
-def find_wordlist(tech_name, wordlist_dir):
-    """Search for a wordlist that contains the technology name, recursively."""
+def find_Wordlist(tech_name, wordlist_dir):
+    #create empty list
     found_wordlists = []
     for root, dirs, files in os.walk(wordlist_dir):
+        #if files name matches technology (case-insensi), put into the []
         for file in files:
             if tech_name.lower() in file.lower():
                 found_wordlists.append(file)
     return found_wordlists
 
-def choose_technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
-    """Prompts the user to choose a technology or directly specify a custom wordlist."""
+def choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
+    #display detected technology that doesnt have relevant wordlists in YELLOW
     if no_wordlist_techs:
         print(Fore.YELLOW + "\nThe following technologies do not have relevant wordlists and will not be displayed:")
         for tech in no_wordlist_techs:
             print(f"{Fore.YELLOW}- {tech}")
     
     while True:
+        #display an interfacfe with detected wordlists with index
         print(Fore.CYAN + "\nSelect from the options:")
         techs = list(tech_wordlists.keys())
         for i, tech in enumerate(techs, 1):
@@ -80,17 +90,21 @@ def choose_technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
         choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): ")
         try:
             choice = int(choice)
+            #process the user choice on which technology and retrieve the available wordlist
             if 1 <= choice <= len(techs):
                 selected_tech = techs[choice - 1]
                 wordlists = [
-                    os.path.join(wordlist_dir, wordlist)  # Build the full path dynamically
+                    os.path.join(wordlist_dir, wordlist)
                     for wordlist in tech_wordlists[selected_tech]
                 ]
-                return wordlists  # Return the full paths of the wordlists
+                #return the wordlist
+                return wordlists
+            #process if user choose to specify their own wordlist
             elif choice == len(techs) + 1:
                 custom_path = input(Fore.CYAN + "Enter the full path to your wordlist: ")
+                #check if the path exist in device, if not print error
                 if os.path.isfile(custom_path):
-                    return [custom_path]  # Return custom wordlist as a single-item list
+                    return [custom_path]
                 else:
                     print(Fore.RED + f"The file '{custom_path}' does not exist. Please try again.")
             else:
@@ -98,23 +112,23 @@ def choose_technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
         except ValueError:
             print(Fore.RED + "Please enter a valid number.")
 
-def choose_wordlist(available_wordlists):
-    """Prompts the user to choose a wordlist from the available options."""
+def choose_Wordlist(available_wordlists):
+    #just in case if only one wordlist available, automatically select
     if len(available_wordlists) == 1:
-        return available_wordlists[0]  # If there's only one wordlist, select it automatically
+        return available_wordlists[0]
 
     while True:
         print(Fore.CYAN + "\nSelect a wordlist to use for brute forcing:")
         for i, wordlist in enumerate(available_wordlists, 1):
-            # Display only the filename for each wordlist
             print(f"{i}. {os.path.basename(wordlist)}")
         print(f"{len(available_wordlists) + 1}. Back")
         
         choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(available_wordlists) + 1}): ")
         try:
+            #process the user choice and returning the selected wordlists entries
             choice = int(choice)
             if 1 <= choice <= len(available_wordlists):
-                return available_wordlists[choice - 1]  # Return the full path of the selected wordlist
+                return available_wordlists[choice - 1]
             elif choice == len(available_wordlists) + 1:
                 return "back"
             else:
@@ -122,26 +136,50 @@ def choose_wordlist(available_wordlists):
         except ValueError:
             print(Fore.RED + "Please enter a valid number.")
 
-def start_brute_force(url, wordlist):
-    """Starts the brute force operation by asking user for settings like recursion, timeout, user-agent, and thread count."""
-    recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n): ").lower()
-    recursive = True if recursive_input == 'y' else False
+def output_Results(found_dirs, output_format):
+    #check if no directories has been found and print error message
+    if not found_dirs:
+        print(Fore.RED + "\nNo directories found to save.")
+        return
+    #initalize a file for saving if user specified specific output format
+    filename = f"autobuster_results.{output_format}"
+    #saves the result in specified format and write the file extension
+    if output_format == "json":
+        with open(filename, 'w') as f:
+            json.dump(found_dirs, f, indent=4)
+    elif output_format == "csv":
+        with open(filename, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(["Found Directories"])
+            for directory in found_dirs:
+                writer.writerow([directory])
+    elif output_format == "txt":
+        with open(filename, 'w') as f:
+            for directory in found_dirs:
+                f.write(directory + "\n")
+    
+    print(Fore.GREEN + f"\n[+] Results saved to {filename}")
 
+def brute_Start(url, wordlist, output_format=None):
+    #ask if user wants to enable recursive search, default no
+    recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n, default = no): ").lower()
+    recursive = True if recursive_input == 'y' else False
+    #if user wants to search recursively, ask for depth, else default 2
     if recursive:
         recursion_depth = input(Fore.CYAN + "Enter recursion depth (default is 2): ")
         recursion_depth = int(recursion_depth) if recursion_depth else 2
     else:
         recursion_depth = 0
-    
+    #ask for number of threads else default 50
     thread_count = input(Fore.CYAN + "Enter the number of threads to use (default is 50): ")
     thread_count = int(thread_count) if thread_count else 50
-
+    #ask for status code, default 200
     status_codes_input = input(Fore.CYAN + "Enter status codes to track (comma separated, e.g., 200,301,302) (default is 200): ")
     if status_codes_input:
         status_codes = [int(code.strip()) for code in status_codes_input.split(',')]
     else:
         status_codes = [200]
-
+    #ask for timeout, else 5 seconds
     timeout_input = input(Fore.CYAN + "Enter timeout in seconds (default is 5): ")
     timeout = int(timeout_input) if timeout_input else 5
 
@@ -151,6 +189,7 @@ def start_brute_force(url, wordlist):
 
     extensions = input(Fore.CYAN + "Enter file extensions to try (comma separated, e.g., .php,.html) or leave empty: ").split(',')
 
+    #print the configured options as information in YELLOW
     print(Fore.YELLOW + f"\nStarting brute-force with the following settings:\n"
           f"- Recursive: {'Enabled' if recursive else 'Disabled'} (Depth: {recursion_depth})\n"
           f"- Thread count: {thread_count}\n"
@@ -161,40 +200,47 @@ def start_brute_force(url, wordlist):
           f"- Extensions: {extensions if extensions != [''] else 'None'}\n"
           f"- Wordlist: {wordlist}\n"
           f"- Target URL: {url}\n")
-
+    #use library to start the time
     start_time = time.time()
-    brute_force_directory(url, wordlist, recursive=recursive, threads=thread_count, status_codes=status_codes,
+    #start the brute-force attack with the tailoring inputs and end the time when finished
+    dir_Brute(url, wordlist, recursive=recursive, threads=thread_count, status_codes=status_codes,
                           timeout=timeout, user_agent=user_agent, http_method=http_method, extensions=extensions,
                           recursion_depth=recursion_depth)
     end_time = time.time()
-
+    
     elapsed_time = end_time - start_time
     print(Fore.YELLOW + f"\n[+] Scan completed in {elapsed_time:.2f} seconds.")
 
-def brute_force_directory(url, wordlist, recursive=False, threads=50, status_codes=[200], timeout=5,
+    if output_format:
+        output_Results(found_dirs, output_format)
+
+def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], timeout=5,
                           user_agent='AutoBuster/1.0', http_method='GET', extensions=[], recursion_depth=2):
-    """Brute force directories on the given URL using the provided wordlist."""
     global stop_bruteforce
 
     def worker():
-        """Worker function for each thread."""
+        #Worker function for each thread.
+        #continue fetch entries from queue until it is empty or the attack is finished
         while not word_queue.empty() and not stop_bruteforce:
             directory = word_queue.get()
             try:
                 for ext in ([''] + extensions):
+                    #append extension if user specified
                     full_path = f"{url.rstrip('/')}/{directory}{ext}"
                     sys.stdout.write(f"\r{Fore.CYAN}[*] Testing: {full_path}         ")
                     sys.stdout.flush()
-
+                    
+                    #craft HTTP requests with user agent etc. and then send to the target URL
                     headers = {'User-Agent': user_agent}
                     response = requests.request(http_method, full_path, timeout=timeout, headers=headers)
 
+                    #if user specified status codes, append it into found dir if applicable
                     if response.status_code in status_codes:
                         print(Fore.GREEN + f"\n[+] Found: {full_path} (Status: {response.status_code})")
                         found_dirs.append(full_path)
-
+                        #if recursive is enabled, brute-force recursively
                         if recursive and recursion_depth > 1:
-                            brute_force_directory(full_path, wordlist, recursive=recursive, threads=threads,
+                            dir_Brute(full_path, wordlist, recursive=recursive, threads=threads,
                                                   status_codes=status_codes, timeout=timeout, user_agent=user_agent,
                                                   http_method=http_method, extensions=extensions, recursion_depth=recursion_depth - 1)
                         break
@@ -212,10 +258,11 @@ def brute_force_directory(url, wordlist, recursive=False, threads=50, status_cod
 
     thread_list = []
     for _ in range(threads):
+        #create and start worker thread 
         thread = threading.Thread(target=worker)
         thread_list.append(thread)
         thread.start()
-
+    #waits for all threads to complete tasks
     for thread in thread_list:
         thread.join()
 
@@ -226,23 +273,27 @@ def brute_force_directory(url, wordlist, recursive=False, threads=50, status_cod
 def main():
     print_tool_name()
 
+    #Initializes argument for CLI inputs
     parser = argparse.ArgumentParser(description='AutoBuster: Directory Brute Forcing Tool with Application Detection')
     parser.add_argument('url', type=str, help='The target URL to analyze')
+    parser.add_argument('-o', '--output', type=str, choices=['txt', 'json', 'csv'],
+                        help='Output format for the results (txt, json, or csv)')
     args = parser.parse_args()
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    #constructs the default directory path for wordlists
     wordlist_dir = os.path.join(current_dir, 'wordlists', 'Web-Content')
     print(Fore.CYAN + f"\nWordlist directory being used: {wordlist_dir}")
-
-    technologies = analyze_website(args.url)
+    #detects technology
+    technologies = analyze_Website(args.url)
 
     if technologies:
         while True:
-            tech_wordlists, no_wordlist_techs = suggest_wordlists(technologies, wordlist_dir)
-            chosen_tech = choose_technology(tech_wordlists, no_wordlist_techs, wordlist_dir)  # Pass wordlist_dir
+            tech_wordlists, no_wordlist_techs = suggest_Wordlist(technologies, wordlist_dir)
+            chosen_tech = choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir)
 
-            if isinstance(chosen_tech, list):  # Handle multiple wordlists
-                wordlist_choice = choose_wordlist(chosen_tech)
+            if isinstance(chosen_tech, list):
+                wordlist_choice = choose_Wordlist(chosen_tech)
             else:
                 wordlist_choice = chosen_tech[0]
 
@@ -250,7 +301,8 @@ def main():
                 continue
             
             print(Fore.CYAN + f"\nStarting directory brute-forcing on {args.url} using {wordlist_choice}...\n")
-            start_brute_force(args.url, wordlist_choice)
+            #start brute force with user defined wordlists and settings
+            brute_Start(args.url, wordlist_choice, output_format=args.output)
             break
 
 if __name__ == "__main__":
