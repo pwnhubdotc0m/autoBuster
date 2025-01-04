@@ -63,24 +63,22 @@ def suggest_Wordlist(technologies, wordlist_dir):
     return tech_wordlists, nomatch_wordlist_techs
 
 def find_Wordlist(tech_name, wordlist_dir):
-    #create empty list
+    # Create an empty list to store matched wordlists with their full paths
     found_wordlists = []
-    for root, dirs, files in os.walk(wordlist_dir):
-        #if files name matches technology (case-insensi), put into the []
+    for root, dirs, files in os.walk(wordlist_dir):  # Traverse the wordlist directory recursively
         for file in files:
-            if tech_name.lower() in file.lower():
-                found_wordlists.append(file)
+            if tech_name.lower() in file.lower():  # Match technology name with filename (case-insensitive)
+                # Append the full path of the matched wordlist
+                found_wordlists.append(os.path.join(root, file))
     return found_wordlists
 
 def choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
-    #display detected technology that doesnt have relevant wordlists in YELLOW
     if no_wordlist_techs:
         print(Fore.YELLOW + "\nThe following technologies do not have relevant wordlists and will not be displayed:")
         for tech in no_wordlist_techs:
             print(f"{Fore.YELLOW}- {tech}")
     
     while True:
-        #display an interfacfe with detected wordlists with index
         print(Fore.CYAN + "\nSelect from the options:")
         techs = list(tech_wordlists.keys())
         for i, tech in enumerate(techs, 1):
@@ -90,19 +88,12 @@ def choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
         choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): ")
         try:
             choice = int(choice)
-            #process the user choice on which technology and retrieve the available wordlist
             if 1 <= choice <= len(techs):
                 selected_tech = techs[choice - 1]
-                wordlists = [
-                    os.path.join(wordlist_dir, wordlist)
-                    for wordlist in tech_wordlists[selected_tech]
-                ]
-                #return the wordlist
+                wordlists = tech_wordlists[selected_tech]  # Directly use the full paths
                 return wordlists
-            #process if user choose to specify their own wordlist
             elif choice == len(techs) + 1:
                 custom_path = input(Fore.CYAN + "Enter the full path to your wordlist: ")
-                #check if the path exist in device, if not print error
                 if os.path.isfile(custom_path):
                     return [custom_path]
                 else:
