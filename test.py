@@ -6,7 +6,6 @@ import os
 import threading
 import requests
 import sys
-import signal
 import time
 import json
 import csv
@@ -25,8 +24,8 @@ stop_bruteforce = False
 found_dirs = []
 
 #Prints AutoBuster name in ASCII art.
-def print_tool_name():
-    ascii_banner = pyfiglet.figlet_format("AutoBuster")
+def print_Tool_Name():
+    ascii_banner = pyfiglet.figlet_format("*AutoBuster*")
     print(Fore.CYAN + Style.BRIGHT + ascii_banner) 
 
 
@@ -262,7 +261,7 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
         print(Fore.GREEN + directory)
 
 def main():
-    print_tool_name()
+    print_Tool_Name()
 
     #Initializes argument for CLI inputs
     parser = argparse.ArgumentParser(description='AutoBuster: Directory Brute Forcing Tool with Application Detection')
