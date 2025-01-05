@@ -10,7 +10,7 @@ import time
 import json
 import csv
 from queue import Queue
-from colorama import Fore, Style, init
+from colorama import Fore, Style, Back, init
 
 #5/1 With comment and maybe all done not yet testing
 
@@ -30,7 +30,7 @@ def print_Tool_Name():
 
 
 def analyze_Website(url):
-    print(Fore.YELLOW + f"\nAnalyzing {url} for web technologies...\n")
+    print(Fore.YELLOW + f"\nAnalyzing {Fore.GREEN + url}" + Fore.YELLOW + f" for web technologies...\n")
     try:
         technologies = builtwith.parse(url) #Parse URL for analyze with builtwith API
         if not technologies:
@@ -38,7 +38,7 @@ def analyze_Website(url):
             return None
         else:
             #loop to check for technology match
-            print(Fore.GREEN + "Detected technologies:")
+            print(Fore.YELLOW + "Detected technologies:")
             for category, techs in technologies.items(): 
                 #display item in categories
                 print(f"{Fore.GREEN}- {category}: {', '.join(techs)}")
@@ -75,7 +75,7 @@ def choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
     if no_wordlist_techs:
         print(Fore.YELLOW + "\nThe following technologies do not have relevant wordlists and will not be displayed:")
         for tech in no_wordlist_techs:
-            print(f"{Fore.YELLOW}- {tech}")
+            print(f"{Fore.RED}- {tech}")
     
     while True:
         print(Fore.CYAN + "\nSelect from the options:")
@@ -84,7 +84,8 @@ def choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
             print(f"{i}. {tech}")
         print(f"{len(techs) + 1}. Specify your own wordlist")
 
-        choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): ")
+        # + Fore.White is to make user input white, improve the looking
+        choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(techs) + 1}): " + Fore.WHITE + f"")
         try:
             choice = int(choice)
             if 1 <= choice <= len(techs):
@@ -110,10 +111,11 @@ def choose_Wordlist(available_wordlists):
     while True:
         print(Fore.CYAN + "\nSelect a wordlist to use for brute forcing:")
         for i, wordlist in enumerate(available_wordlists, 1):
+            #only extract the file base name for cleaner display
             print(f"{i}. {os.path.basename(wordlist)}")
         print(f"{len(available_wordlists) + 1}. Back")
         
-        choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(available_wordlists) + 1}): ")
+        choice = input(Fore.CYAN + f"\nEnter your choice (1-{len(available_wordlists) + 1}): " + Fore.WHITE + f"")
         try:
             #process the user choice and returning the selected wordlists entries
             choice = int(choice)
@@ -152,44 +154,50 @@ def output_Results(found_dirs, output_format):
 
 def brute_Start(url, wordlist, output_format=None):
     #ask if user wants to enable recursive search, default no
-    recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n, default = no): ").lower()
+    recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n, default = no): " + Fore.WHITE + f"").lower()
     recursive = True if recursive_input == 'y' else False
     #if user wants to search recursively, ask for depth, else default 2
     if recursive:
-        recursion_depth = input(Fore.CYAN + "Enter recursion depth (default is 2): ")
+        recursion_depth = input(Fore.MAGENTA + "Enter recursion depth (default is 2): " + Fore.WHITE + f"")
         recursion_depth = int(recursion_depth) if recursion_depth else 2
     else:
         recursion_depth = 0
+
     #ask for number of threads else default 50
-    thread_count = input(Fore.CYAN + "Enter the number of threads to use (default is 50): ")
+    thread_count = input(Fore.CYAN + "Enter the number of threads to use (default is 50): " + Fore.WHITE + f"")
     thread_count = int(thread_count) if thread_count else 50
+
     #ask for status code, default 200
-    status_codes_input = input(Fore.CYAN + "Enter status codes to track (comma separated, e.g., 200,301,302) (default is 200): ")
+    status_codes_input = input(Fore.CYAN + "Enter status codes to track (comma separated, e.g., 200,301,302) (default is 200): " + Fore.WHITE + f"")
     if status_codes_input:
         status_codes = [int(code.strip()) for code in status_codes_input.split(',')]
     else:
         status_codes = [200]
-    #ask for timeout, else 5 seconds
-    timeout_input = input(Fore.CYAN + "Enter timeout in seconds (default is 5): ")
+
+   #ask for user-agent, http_method, specify file ext
+    user_agent = input(Fore.CYAN + "Enter custom user-agent (default is 'AutoBuster/1.0'): " + Fore.WHITE + f"") or 'AutoBuster/1.0'
+
+    http_method = input(Fore.CYAN + "Enter HTTP method to use (default is GET): " + Fore.WHITE + f"").upper() or 'GET'
+
+    extensions = input(Fore.CYAN + "Enter file extensions to try (comma separated, e.g., .php,.html) or leave empty: " + Fore.WHITE + f"").split(',')
+
+     #ask for timeout, else 5 seconds
+    timeout_input = input(Fore.CYAN + "Enter timeout in seconds (default is 5): " + Fore.WHITE + f"")
     timeout = int(timeout_input) if timeout_input else 5
 
-    user_agent = input(Fore.CYAN + "Enter custom user-agent (default is 'AutoBuster/1.0'): ") or 'AutoBuster/1.0'
+    #print the configured options as information in MAGENTA with the title in YELLOW
+    print(Fore.YELLOW + f"\nStarting brute-force with the following settings:")
+    print(Fore.MAGENTA + 
+        f"- Recursive: {'Enabled' if recursive else 'Disabled'} (Depth: {recursion_depth})\n"
+        f"- Thread count: {thread_count}\n"
+        f"- Status codes: {status_codes}\n"
+        f"- Timeout: {timeout} seconds\n"
+        f"- User-Agent: {user_agent}\n"
+        f"- HTTP method: {http_method}\n"
+        f"- Extensions: {extensions if extensions != [''] else 'None'}\n"
+        f"- Wordlist: {wordlist}\n"
+        f"- Target URL: {url}\n")
 
-    http_method = input(Fore.CYAN + "Enter HTTP method to use (default is GET): ").upper() or 'GET'
-
-    extensions = input(Fore.CYAN + "Enter file extensions to try (comma separated, e.g., .php,.html) or leave empty: ").split(',')
-
-    #print the configured options as information in YELLOW
-    print(Fore.YELLOW + f"\nStarting brute-force with the following settings:\n"
-          f"- Recursive: {'Enabled' if recursive else 'Disabled'} (Depth: {recursion_depth})\n"
-          f"- Thread count: {thread_count}\n"
-          f"- Status codes: {status_codes}\n"
-          f"- Timeout: {timeout} seconds\n"
-          f"- User-Agent: {user_agent}\n"
-          f"- HTTP method: {http_method}\n"
-          f"- Extensions: {extensions if extensions != [''] else 'None'}\n"
-          f"- Wordlist: {wordlist}\n"
-          f"- Target URL: {url}\n")
     #use library to start the time
     start_time = time.time()
     #start the brute-force attack with the tailoring inputs and end the time when finished
@@ -198,6 +206,7 @@ def brute_Start(url, wordlist, output_format=None):
                           recursion_depth=recursion_depth)
     end_time = time.time()
     
+    #Count the elapse time and display it in seconds with 2 decimal points
     elapsed_time = end_time - start_time
     print(Fore.YELLOW + f"\n[+] Scan completed in {elapsed_time:.2f} seconds.")
 
@@ -217,7 +226,7 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
                 for ext in ([''] + extensions):
                     #append extension if user specified
                     full_path = f"{url.rstrip('/')}/{directory}{ext}"
-                    sys.stdout.write(f"\r{Fore.CYAN}[*] Testing: {full_path}         ")
+                    sys.stdout.write(f"\r{Fore.CYAN}[*] Testing: {full_path}")
                     sys.stdout.flush()
                     
                     #craft HTTP requests with user agent etc. and then send to the target URL
@@ -228,20 +237,22 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
                     if response.status_code in status_codes:
                         print(Fore.GREEN + f"\n[+] Found: {full_path} (Status: {response.status_code})")
                         found_dirs.append(full_path)
-                        #if recursive is enabled, brute-force recursively
+                        #if recursive is enabled, when found a valid dir, re-call the function
                         if recursive and recursion_depth > 1:
                             dir_Brute(full_path, wordlist, recursive=recursive, threads=threads,
-                                                  status_codes=status_codes, timeout=timeout, user_agent=user_agent,
-                                                  http_method=http_method, extensions=extensions, recursion_depth=recursion_depth - 1)
+                                        status_codes=status_codes, timeout=timeout, user_agent=user_agent,
+                                        http_method=http_method, extensions=extensions, recursion_depth=recursion_depth - 1)
                         break
             except requests.RequestException:
                 pass
             finally:
                 word_queue.task_done()
 
+    #fetch stripped wordlist data
     with open(wordlist, 'r') as f:
         directories = [line.strip() for line in f.readlines()]
 
+    #create a queue to store the wordlist entries
     word_queue = Queue()
     for directory in directories:
         word_queue.put(directory)
@@ -256,7 +267,7 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
     for thread in thread_list:
         thread.join()
 
-    print(Fore.GREEN + "\n[+] Brute force complete. Found directories:")
+    print(Fore.YELLOW + "\n[+] Brute force complete. Found directories:")
     for directory in found_dirs:
         print(Fore.GREEN + directory)
 
@@ -273,7 +284,7 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     #constructs the default directory path for wordlists
     wordlist_dir = os.path.join(current_dir, 'wordlists', 'Web-Content')
-    print(Fore.CYAN + f"\nWordlist directory being used: {wordlist_dir}")
+    print(Fore.CYAN + f"\nWordlist directory being used: {Fore.GREEN + wordlist_dir}")
     #detects technology
     technologies = analyze_Website(args.url)
 
@@ -290,7 +301,7 @@ def main():
             if wordlist_choice == "back":
                 continue
             
-            print(Fore.CYAN + f"\nStarting directory brute-forcing on {args.url} using {wordlist_choice}...\n")
+            print(Fore.YELLOW + f"\nStarting directory brute-forcing on {Fore.GREEN + args.url}" + Fore.YELLOW + f" using {Fore.GREEN +wordlist_choice}...\n")
             #start brute force with user defined wordlists and settings
             brute_Start(args.url, wordlist_choice, output_format=args.output)
             break
