@@ -93,7 +93,7 @@ def choose_Technology(tech_wordlists, no_wordlist_techs, wordlist_dir):
                 wordlists = tech_wordlists[selected_tech]  # Directly use the full paths
                 return wordlists
             elif choice == len(techs) + 1:
-                custom_path = input(Fore.CYAN + "Enter the full path to your wordlist: ")
+                custom_path = input(Fore.CYAN + "Enter the full path to your wordlist: " + Fore.WHITE + f"")
                 if os.path.isfile(custom_path):
                     return [custom_path]
                 else:
@@ -206,8 +206,11 @@ def brute_Start(url, wordlist, output_format=None):
                           recursion_depth=recursion_depth)
     end_time = time.time()
     
-    #Count the elapse time and display it in seconds with 2 decimal points
+    #Count the elapse time and display it in seconds with 2 decimal points after display result
     elapsed_time = end_time - start_time
+    print(Fore.YELLOW + "\n\n[+] Brute force complete. Found directories:")
+    for directory in found_dirs:
+        print(Fore.GREEN + directory)
     print(Fore.YELLOW + f"\n[+] Scan completed in {elapsed_time:.2f} seconds.")
 
     if output_format:
@@ -266,10 +269,6 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
     #waits for all threads to complete tasks
     for thread in thread_list:
         thread.join()
-
-    print(Fore.YELLOW + "\n[+] Brute force complete. Found directories:")
-    for directory in found_dirs:
-        print(Fore.GREEN + directory)
 
 def main():
     print_Tool_Name()
