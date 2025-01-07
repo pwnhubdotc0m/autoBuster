@@ -12,7 +12,6 @@ import csv
 from queue import Queue
 from colorama import Fore, Style, Back, init
 
-#5/1 With comment and maybe all done not yet testing
 
 # initialize colorama to auto reset the color settings after each line print
 init(autoreset=True)
