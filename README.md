@@ -17,17 +17,34 @@ git clone https://github.com/pwnhubdotc0m/autoBuster.git
 ```bash
 cd autoBuster
 ```
-4. Install dependencies
+4. Create a Python virtual environment
+
+```bash
+python3 -m venv venv
+```
+
+4. Activate the virtual environment
+
+```bash
+source venv/bin/activate
+```
+5. Install dependencies
 
 ```bash
 sudo pip3 install -r requirements.txt
 ```
+
+6. To deactivate the virtual environment
+
+```bash
+deactivate
+```
 ### For `Windows`
-1. `Open Command Prompt` or `PowerShell`
+1. Open `Command Prompt` or `PowerShell`
 2. Ensure you have Python and Git installed. To check,
    
 ```bash
-python --version
+python3 --version
 git --version
 ```
 If not installed, download and install [Python](https://www.python.org/) & [Git](https://git-scm.com/)
@@ -37,15 +54,30 @@ If not installed, download and install [Python](https://www.python.org/) & [Git]
 ```bash
 git clone https://github.com/pwnhubdotc0m/autoBuster.git
 ```
-3. Navigate to the project directory
+4. Navigate to the project directory
 
 ```bash
 cd autoBuster
 ```
-4. Install dependencies
+5. Create a Python virtual environment
 
 ```bash
-pip install -r requirements.txt
+python3 -m venv venv
+```
+
+6. Activate the virtual environment
+   - On `Command Prompt`
+   ```bash
+   venv\Scripts\activate
+   ```
+   - On `PoweShell`
+   ```bash
+   .\venv\Scripts\activate
+   ```
+7. Install dependencies
+
+```bash
+pip3 install -r requirements.txt
 ```
 ## Options
 ```bash
@@ -64,5 +96,5 @@ options:
 
 ## Examples
 ```bash
-python autoBuster.py -o json https://xyz.com
+python3 autoBuster.py -o json https://xyz.com
 ```
