@@ -14,10 +14,10 @@ from colorama import Fore, Style, Back, init
 
 #5/1 With comment and maybe all done not yet testing
 
-# Initialize colorama for cross-platform support
+# initialize colorama to auto reset the color settings after each line print
 init(autoreset=True)
 
-# Global var for ctrl + C exit
+# global var for ctrl + C exit
 stop_bruteforce = False
 
 # Create empty list for storing found directory
@@ -272,6 +272,7 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
                 for ext in ([''] + extensions):
                     #append extension if user specified
                     full_path = f"{url.rstrip('/')}/{directory}{ext}"
+                    #using \r carriage return to make the printing stays in one line for cleaner terminal
                     sys.stdout.write(f"\r{Fore.CYAN}[*] Testing: {full_path}")
                     sys.stdout.flush()
                     

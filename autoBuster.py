@@ -12,11 +12,12 @@ import csv
 from queue import Queue
 from colorama import Fore, Style, Back, init
 
+#5/1 With comment and maybe all done not yet testing
 
-# Initialize colorama for cross-platform support
+# initialize colorama to auto reset the color settings after each line print
 init(autoreset=True)
 
-# Global var for ctrl + C exit
+# global var for ctrl + C exit
 stop_bruteforce = False
 
 # Create empty list for storing found directory
@@ -24,9 +25,9 @@ found_dirs = []
 
 #Prints AutoBuster name in ASCII art.
 def print_Tool_Name():
-    ascii_banner = pyfiglet.figlet_format("*AutoBuster*")
+    ascii_banner = pyfiglet.figlet_format("~AutoBuster~", font = "speed")
     print(Fore.CYAN + Style.BRIGHT + ascii_banner) 
-
+    print(Fore.CYAN + "Version: 1.0")
 
 def analyze_Website(url):
     print(Fore.YELLOW + f"\nAnalyzing {Fore.GREEN + url}" + Fore.YELLOW + f" for web technologies...\n")
@@ -127,34 +128,63 @@ def choose_Wordlist(available_wordlists):
         except ValueError:
             print(Fore.RED + "Please enter a valid number.")
 
-def output_Results(found_dirs, output_format):
+def output_Results(found_dirs, output_format, config):
     #check if no directories has been found and print error message
     if not found_dirs:
         print(Fore.RED + "\nNo directories found to save.")
         return
+    
     #initalize a file for saving if user specified specific output format
     filename = f"autobuster_results.{output_format}"
+
+    # scan info for reporting
+    scan_info = {
+        "Target URL": config.get("target_url"),
+        "Recursive": config.get("recursive"),
+        "Recursion Depth": config.get("recursion_depth"),
+        "Thread Count": config.get("thread_count"),
+        "Status Codes": config.get("status_codes"),
+        "Timeout": config.get("timeout"),
+        "User-Agent": config.get("user_agent"),
+        "HTTP Method": config.get("http_method"),
+        "Extensions": config.get("extensions"),
+        "Wordlist": config.get("wordlist"),
+    }
+
     #saves the result in specified format and write the file extension
     if output_format == "json":
+        # save as JSON
+        report = {"Scan Info": scan_info, "Found Directories": found_dirs}
         with open(filename, 'w') as f:
-            json.dump(found_dirs, f, indent=4)
+            json.dump(report, f, indent=4)
     elif output_format == "csv":
+        # save as CSV
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
+            writer.writerow(["Scan Info"])
+            for key, value in scan_info.items():
+                writer.writerow([key, value])
+            writer.writerow([])
             writer.writerow(["Found Directories"])
             for directory in found_dirs:
                 writer.writerow([directory])
     elif output_format == "txt":
+        # save as TXT
         with open(filename, 'w') as f:
+            f.write("Scan Info:\n")
+            for key, value in scan_info.items():
+                f.write(f"{key}: {value}\n")
+            f.write("\nFound Directories:\n")
             for directory in found_dirs:
                 f.write(directory + "\n")
-    
+
     print(Fore.GREEN + f"\n[+] Results saved to {filename}")
 
 def brute_Start(url, wordlist, output_format=None):
     #ask if user wants to enable recursive search, default no
     recursive_input = input(Fore.CYAN + "Do you want to enable recursive search? (y/n, default = no): " + Fore.WHITE + f"").lower()
     recursive = True if recursive_input == 'y' else False
+    
     #if user wants to search recursively, ask for depth, else default 2
     if recursive:
         recursion_depth = input(Fore.MAGENTA + "Enter recursion depth (default is 2): " + Fore.WHITE + f"")
@@ -196,6 +226,20 @@ def brute_Start(url, wordlist, output_format=None):
         f"- Extensions: {extensions if extensions != [''] else 'None'}\n"
         f"- Wordlist: {wordlist}\n"
         f"- Target URL: {url}\n")
+    
+    # Create the config for parsing to output function
+    config = {
+        "target_url": url,
+        "recursive": recursive,
+        "recursion_depth": recursion_depth,
+        "thread_count": thread_count,
+        "status_codes": status_codes,
+        "timeout": timeout,
+        "user_agent": user_agent,
+        "http_method": http_method,
+        "extensions": extensions,
+        "wordlist": wordlist,
+    }
 
     #use library to start the time
     start_time = time.time()
@@ -213,7 +257,7 @@ def brute_Start(url, wordlist, output_format=None):
     print(Fore.YELLOW + f"\n[+] Scan completed in {elapsed_time:.2f} seconds.")
 
     if output_format:
-        output_Results(found_dirs, output_format)
+        output_Results(found_dirs, output_format, config)
 
 def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], timeout=5,
                           user_agent='AutoBuster/1.0', http_method='GET', extensions=[], recursion_depth=2):
@@ -228,6 +272,7 @@ def dir_Brute(url, wordlist, recursive=False, threads=50, status_codes=[200], ti
                 for ext in ([''] + extensions):
                     #append extension if user specified
                     full_path = f"{url.rstrip('/')}/{directory}{ext}"
+                    #using \r carriage return to make the printing stays in one line for cleaner terminal
                     sys.stdout.write(f"\r{Fore.CYAN}[*] Testing: {full_path}")
                     sys.stdout.flush()
                     
@@ -282,7 +327,7 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     #constructs the default directory path for wordlists
     wordlist_dir = os.path.join(current_dir, 'wordlists', 'Web-Content')
-    print(Fore.CYAN + f"\nWordlist directory being used: {Fore.GREEN + wordlist_dir}")
+    print(Fore.YELLOW + f"\nWordlist directory being used: {Fore.GREEN + wordlist_dir}")
     #detects technology
     technologies = analyze_Website(args.url)
 
