@@ -20,7 +20,7 @@ cd autoBuster
 4. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+sudo pip3 install -r requirements.txt
 ```
 ### For `Windows`
 1. `Open Command Prompt` or `PowerShell`
