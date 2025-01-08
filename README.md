@@ -31,7 +31,7 @@ source venv/bin/activate
 5. Install dependencies
 
 ```bash
-sudo pip3 install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 6. To deactivate the virtual environment
