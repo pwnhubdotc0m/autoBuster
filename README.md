@@ -70,7 +70,7 @@ python3 -m venv venv
    ```bash
    venv\Scripts\activate
    ```
-   - On `PoweShell`
+   - On `PowerShell`
    ```bash
    .\venv\Scripts\activate
    ```
