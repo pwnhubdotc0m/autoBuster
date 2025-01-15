@@ -1,5 +1,4 @@
 # autoBuster
-![Uploading Screenshot 2025-01-15 at 9.45.34 AM.png…]()
 
 An intelligent directory brute-forcing tool with automated application detection and dynamic wordlists mechanism
 
